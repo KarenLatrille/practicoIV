@@ -1,0 +1,268 @@
+---
+title: "Practico4"
+author: Karen Latrille
+format: html
+editor: visual
+editor: visual
+bibliography: 
+link-citations: true
+---
+
+## Democracia y participacion civica
+
+Esta investigación analizaremos un tema que en los últimos años se ha acrecentado en la opinión público, y ejercicio de la ciudadanía de las/os chilenos, la cual es la educación cívica y el regreso del voto obligatorio para todo aquel que sea ciudadano del país, en donde analizaremos el real alcance de esta obligatoriedad en el ejercicio popular, en donde, definiremos de forma clara los intereses y temores que involucra este cambio en las reglas del ejercicio de la soberanía del país, en donde con análisis estadístico y de literatura en torno a los diferentes aristas de este problema de investigación, centrándonos en las últimas elecciones plebiscitarias de los distintos momentos de las propuestas de las nuevas constituciones de la república, que a pesar de los resultados desfavorables para el proceso en su totalidad, si nos marca tendencias de participación cívica imperantes en Chile, y que sin educación cívica correcta no se podrá avanzar hacia un voto informado y consciente de las decisiones que el voto implica para cada uno de los ciudadanos y habitantes del país.
+
+Tal como mackenna nos menciona, “los  ciudadanos  votan  para  lograr  que sus políticas preferidas sean promovidas por el gobierno. En consecuencia, deben tomar la decisión de participar de acuerdo con el contraste entre los costos (de inscripción, de información y de movilización) que implica votar y sus beneficios (que su candidato preferido resulte electo). Sin embargo, su candidato puede resultar electo con independencia de su voto, y en elecciones con tantos votantes la probabilidad de emitir un voto decisivo es prácticamente cero, lo que produce que los costos sean siempre mayores a los beneficios de votar. Esto lleva a lo que muchos han llamado la “paradoja de la participación” (Aldrich, 1993): a pesar de que no parece racional hacerlo, existe un númeroconsiderable de gente que vota.” ([“Composición Del Electorado En Elecciones Con Voto Obligatorio y Voluntario: Un Estudio Cuasi Experimental de La Participación Electoral En Chile” 2015](https://karenlatrille.github.io/practico1uah/practicoopc.html?classId=d51c16eb-7c4f-40d6-9b62-8b7013dfbe5d&assignmentId=aa32e546-50cb-42bd-9620-0c4d6e9e1d1d&submissionId=6cc1e06e-7913-8ca7-ba35-7c817b3aa3b0#ref-ComposicionElectoradoElecciones2015))
+
+Si bien nos parece mas atingente para el avance de la investigación profundizar sobre la percepcion de la ciudadania respecto a los propios poderes del estado e instituciones en general, ya que esta puede ser una directa razon de la baja participacion civica de parte de las masas en nuestro pais, ya que la democracia y la proteccion de ella muchas veces se ve manchada por quienes nos gobiernan, mencionando lo anterior es que nos centraremos en el analisis de las variables referentes a la confianza en las instituciones(gobierno, congreso, partidos politicos, poder judicial) y la percepcion que se observa sobre el poder y su ultilizacion final por las fuerzas gobernantes. Es nuestro deber poder comprender que hay detras de esta posicion ya analizada, logrando un analisis de regresion entorno a las caracteristicas sociales y la propia participacion civica de las personas del pais, por lo que aplicaremos un analisis de ELSOC 2018, entorno a la manifestacion de la ciudadania dentro de la democracia, considerando este ejercicio como parte del deber y derecho civico que tienen todos en el pais, en donde se utilizo el analisis de variables, como sexo, e ingreso de las personas, lo cual se agrupo en quintiles para establecer un orden adecuado para realizar la regresion, junto con la posicion politica de los encuestados, para crear un modelo que nos demuestre el estado de la democracia en chile a traves de la propia posicion social y politica de las personas, dandonos el escenario probable de la participacion de la ciudadania respecto a lo politico y las consecuencias en el propio derecho y deberes civicos de todos los ciudadanos chilenos, en miras incluso de los proximos periodos eleccionarios que ya comenzaron en Chile, por lo cual comenzamos con un analisis de la frecuencia que se participa en distintas formas de manifestacion de descontento u organización politica en el espacio publico.
+
+## Analisis de regresiones
+
+```{#Cargamos la base de datos desde internet}
+load(url("https://github.com/Kevin-carrasco/metod1-MCS/raw/main/files/data/elsoc2.RData"))
+
+view_df(elsoc,max.len = 50)
+install.packages(view_df)
+
+pacman::p_load(dplyr, car, sjmisc, sjPlot, sjlabelled, stargazer, kableExtra, corrplot, texreg, ggplot2, ggpubr)
+pacman::p_load(dplyr, 
+               car, 
+               summarytools, 
+               sjPlot, 
+               texreg, 
+               corrplot, 
+               ggplot2, 
+               sjlabelled, 
+               fastDummies, 
+               ggeffects)
+
+
+view_df(elsoc,max.len = 50)
+plot_stackfrq(elsoc[,c("pospol","part01","part02","part03")]) + theme(legend.position="bottom")
+plot_stackfrq(elsoc[,c("part01","part02","part03","part04")]) + theme(legend.position="bottom")
+corrplot.mixed(cor(select(elsoc,part01,part02,part03,part04),
+                   use = "complete.obs"))
+
+Recodificacion de variables
+elsoc$part01 <- car::recode(elsoc$part01, "1=0; 2=1; 3=2; 4=3; 5=4")
+elsoc$part02 <- car::recode(elsoc$part02, "1=0; 2=1; 3=2; 4=3; 5=4")
+elsoc$part03 <- car::recode(elsoc$part03, "1=0; 2=1; 3=2; 4=3; 5=4")
+elsoc$part04 <- car::recode(elsoc$part04, "1=0; 2=1; 3=2; 4=3; 5=4")
+
+elsoc <- elsoc %>% mutate(partpol=rowSums(select(., part01,part02,part03,part04)))
+summary(elsoc$partpol)
+
+summary(elsoc$inghogar)
+elsoc$inghogar_i <- ifelse(test = (is.na(elsoc$inghogar)), #¿existen NA en ingresos?
+                           yes = elsoc$inghogar_t,         #VERDADERO, remplazar con la media del tramo
+                           no = elsoc$inghogar)            #FALSE, mantener la variable original.
+
+elsoc$inghogar_i <- set_label(elsoc$inghogar_i,"Ingreso total del hogar (imputada)")
+elsoc$ing_pcap <- elsoc$inghogar_i/elsoc$tamhogar
+elsoc$ing_pcap <- set_label(elsoc$ing_pcap,"Ingreso per cápita del hogar")
+elsoc$quintile<- dplyr::ntile(x = elsoc$ing_pcap,
+                              n = 5) # n de categorias, para quintiles usamos 5 
+elsoc$quintile <- factor(elsoc$quintile,c(1,2,3,4,5), c("Quintil 1","Quintil 2","Quintil 3","Quintil 4","Quintil 5")) 
+elsoc %>% 
+  group_by(quintile) %>% 
+  summarise(n=n(),
+            Media=mean(ing_pcap,na.rm = T),
+            Mediana=median(ing_pcap,na.rm = T)) %>% 
+  knitr::kable()
+#Recodificacion de quintiles
+elsoc$quintilemiss <- factor(elsoc$quintile,ordered = T)
+elsoc$quintilemiss <- ifelse(test=is.na(elsoc$quintilemiss),yes = 6,no = elsoc$quintilemiss)
+elsoc$quintilemiss <- factor(elsoc$quintilemiss ,levels = c(1,2,3,4,5,6),labels =  c("Quintil 1","Quintil 2","Quintil 3","Quintil 4","Quintil 5","Missing")) 
+elsoc %>% group_by(quintilemiss) %>% summarise(n=n())
+
+fit01<- lm(partpol~ing_pcap,data=elsoc)
+fit02<- lm(partpol~quintile,data=elsoc)
+fit03<- lm(partpol~quintilemiss,data=elsoc)
+labs01 <- c("Intercepto","Ingreso per/cap",
+            "Quintil 2","Quintil 3","Quintil 4","Quintil 5",
+            "Quintil 2","Quintil 3","Quintil 4","Quintil 5","Quintil perdido")
+#screenreg para que se vea en R
+screenreg(list(fit01,fit02,fit03),custom.coef.names = labs01)
+           Model 1      Model 2      Model 3    
+------------------------------------------------------
+Intercepto          0.98 ***     0.77 ***     0.77 ***
+                   (0.04)       (0.07)       (0.07)   
+Ingreso per/cap     0.00 ***                          
+                   (0.00)                             
+Quintil 2                        0.15         0.15    
+                                (0.10)       (0.11)   
+Quintil 3                        0.41 ***     0.41 ***
+                                (0.10)       (0.11)   
+Quintil 4                        0.49 ***     0.49 ***
+                                (0.10)       (0.11)   
+Quintil 5                        0.90 ***     0.90 ***
+                                (0.10)       (0.11)   
+Quintil perdido                               0.58 ***
+                                             (0.16)   
+------------------------------------------------------
+R^2                 0.01         0.02         0.02    
+Adj. R^2            0.01         0.02         0.02    
+Num. obs.        3546         3546         3740       
+======================================================
+*** p < 0.001; ** p < 0.01; * p < 0.05
+
+fit04<- lm(partpol~sexo,data=elsoc)
+fit05<- lm(partpol~sexo+edad,data=elsoc)
+fit06<- lm(partpol~sexo+edad+quintilemiss,data=elsoc)
+fit07<- lm(partpol~sexo+edad+quintilemiss+pospol,data=elsoc)
+
+labs02 <- c("Intercepto","Sexo (mujer=1)","Edad",
+            "Quintil 2","Quintil 3","Quintil 4","Quintil 5","Quintil perdido",
+            "Izquierda (ref. derecha)","Centro","Idep./Ninguno")
+screenreg(list(fit04,fit05,fit06, fit07),custom.coef.names = labs02)
+
+    Model 1      Model 2      Model 3      Model 4    
+----------------------------------------------------------------------------
+Intercepto                   1.24 ***     2.85 ***     2.35 ***     3.19 ***
+                            (0.05)       (0.11)       (0.13)       (0.14)   
+Sexo (mujer=1)              -0.11        -0.07         0.06         0.10    
+                            (0.07)       (0.06)       (0.07)       (0.06)   
+Edad                                     -0.03 ***    -0.03 ***    -0.03 ***
+                                         (0.00)       (0.00)       (0.00)   
+Quintil 2                                              0.18         0.17    
+                                                      (0.10)       (0.10)   
+Quintil 3                                              0.41 ***     0.41 ***
+                                                      (0.10)       (0.10)   
+Quintil 4                                              0.46 ***     0.41 ***
+                                                      (0.10)       (0.10)   
+Quintil 5                                              0.86 ***     0.74 ***
+                                                      (0.10)       (0.10)   
+Quintil perdido                                        0.47 **      0.53 ***
+                                                      (0.16)       (0.16)   
+Izquierda (ref. derecha)                                           -0.94 ***
+                                                                   (0.09)   
+Centro                                                             -1.03 ***
+                                                                   (0.10)   
+Idep./Ninguno                                                      -1.37 ***
+                                                                   (0.09)   
+----------------------------------------------------------------------------
+R^2                          0.00         0.07         0.09         0.15    
+Adj. R^2                     0.00         0.07         0.09         0.15    
+Num. obs.                 3740         3740         3740         3656       
+============================================================================
+*** p < 0.001; ** p < 0.01; * p < 0.05
+
+knitreg(list(fit04), 
+        custom.model.names = c("Modelo 1"),
+        custom.coef.names = c("Intercepto",
+                              "Sexo (mujer=1)"))
+
+ggeffects::ggpredict(fit04, terms = c("sexo")) %>%
+  ggplot(aes(x=x, y=predicted)) +
+  geom_bar(stat="identity", color="grey", fill="grey")+
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width=.1) +
+  labs(title="Sexo", x = "", y = "") +
+  theme_bw() +
+  scale_x_continuous(name = "",
+                     breaks = c(0,1),
+                     labels = c("Hombre", "Mujer"))+
+  scale_y_continuous(limits = c(0,16), 
+                     breaks = seq(0,16, by = 1))
+
+
+#Eleccion modelo 4 como relevante
+knitreg(list(fit07),
+        custom.model.names = c("Modelo 4"),
+        custom.coef.names = c("Intercepto",
+                              "Sexo (mujer=1)",
+                              "Edad",
+                              "Quintil 2",
+                              "Quintil 3",
+                              "Quintil 4",
+                              "Quintil 5",
+                              "Quintil perdido",
+                              "Izquierda (ref. derecha)",
+                              "Centro",
+                              "Indep./Ninguno"))
+      Modelo 4   
+-------------------------------------
+Intercepto                   3.19 ***
+                            (0.14)   
+Sexo (mujer=1)               0.10    
+                            (0.06)   
+Edad                        -0.03 ***
+                            (0.00)   
+Quintil 2                    0.17    
+                            (0.10)   
+Quintil 3                    0.41 ***
+                            (0.10)   
+Quintil 4                    0.41 ***
+                            (0.10)   
+Quintil 5                    0.74 ***
+                            (0.10)   
+Quintil perdido              0.53 ***
+                            (0.16)   
+Izquierda (ref. derecha)    -0.94 ***
+                            (0.09)   
+Centro                      -1.03 ***
+                            (0.10)   
+Indep./Ninguno              -1.37 ***
+                            (0.09)   
+-------------------------------------
+R^2                          0.15    
+Adj. R^2                     0.15    
+Num. obs.                 3656       
+=====================================
+*** p < 0.001; ** p < 0.01; * p < 0.05
+
+ggeffects::ggpredict(fit07, terms = c("quintilemiss")) %>%
+  ggplot(aes(x=x, y=predicted)) +
+  geom_bar(stat="identity", color="grey", fill="grey")+
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width=.1) +
+  labs(title="Quintil ingresos", x = "", y = "") +
+  theme_bw() +
+  scale_x_discrete(name = "",
+                   labels = c("Quintil 1", "Quintil 2", "Quintil 3", "Quintil 4", "Quintil 5", "Quintil perdido")) +
+  scale_y_continuous(limits = c(0,16), 
+                     breaks = seq(0,16, by = 1))
+#Posiciones politcas de encuestados
+ggeffects::ggpredict(fit07, terms = c("pospol")) %>%
+  ggplot(aes(x=x, y=predicted)) +
+  geom_bar(stat="identity", color="grey", fill="grey")+
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width=.1) +
+  labs(title="Posición política", x = "", y = "") +
+  theme_bw() +
+  scale_x_discrete(name = "",
+                   labels = c("Derecha", "Centro", "Izquierda", "Independiente/ninguno")) +
+  scale_y_continuous(limits = c(0,16), 
+                     breaks = seq(0,16, by = 1))
+#Edad entrevistados
+ggeffects::ggpredict(fit07, terms="edad") %>%
+  ggplot(mapping=aes(x = x, y=predicted)) +
+  labs(title="Edad", x = "", y = "")+
+  theme_bw() +
+  geom_smooth()+
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .2, fill = "black") +
+  scale_x_continuous(breaks = seq(0,100, by = 10))+
+  scale_y_continuous(limits = c(0,16), 
+                     breaks = seq(0,16, by = 1))
+```
+
+![](Frecuencias de accion politica.png)
+
+Esta tabla nos entrega informacion general de la frecuencia en que las personas entrevistadas realiza actividades referidas a actividades que conlleven participacion en lo politico, en donde mayoritariamente nos encontramos con datos negativos en la participacion de la ciudadania encuestada en las actividades publicas y politicas consultadas por ELSOC 2018.
+
+![](posicion politica de los entrevistados.png)
+
+Junto a esto se nos presenta un grafico que nos refleja una tendencia hacia la derecha de los encuestados, que se puede relacionar directamente con la frecuencia con la que las personas realizan alguna actividad politica en el ambito publico, siendo la tendencia de las personas mas hacia la derecha, significa que la participacion disminuye considerablemente.
+
+Muestra de aquello presentamos el siguiente modelo de regresiones:
+
+```         
+ Modelo 4    ------------------------------------- Intercepto                   3.19 ***                                             (0.14)    Sexo (mujer=1)               0.10                                                (0.06)    Edad                        -0.03 ***                             (0.00)                 Quintil 2                    0.17                                 (0.10)                  Quintil 3                    0.41 ***                             (0.10)                 Quintil 4                    0.41 ***                             (0.10)                Quintil 5                    0.74 ***                             (0.10)                Quintil perdido              0.53 ***                             (0.16)               Izquierda (ref. derecha)    -0.94 ***                             (0.09)                  Centro                      -1.03 ***                             (0.10)                   Indep./Ninguno              -1.37 ***                             (0.09)    -------------------------------------         R^2                          0.15            Adj. R^2                     0.15            Num. obs.                 3656        =====================================         *** p < 0.001; ** p < 0.01; * p < 0.05
+```
+
+En este ejemplo, de regresión lineal podemos inducir información relevante para el desarrollo de esta investigación, como por ejemplo que las personas de derecha, son mayoria en el universo de encuestados en referencia a la izquierda, y a su vez nos encontramos con un quintil preponderante, que es el quintil 5. Todo esto con una signifcicación estadistica del 99.9% .
+
+Referencia:
+
+Mackenna, B. (2015). Composición del electorado en elecciones con voto obligatorio y voluntario: Un estudio cuasi experimental de la participación electoral en Chile. Revista Latinoamericana de Opinión Pública, 5(0), 49. <https://doi.org/10.14201/rlop.22307>
+
+Latinobarometro (2020) **Corporación Latinobarómetro** Informe sobre Chile.
+
+ELSOC (2018):  Estudio Longitudinal Social de Chile, Centro de Estudios de Conflicto y Cohesión Social - COES
